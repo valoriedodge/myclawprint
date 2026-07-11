@@ -13,6 +13,9 @@ policy/
 # Tracked services — each deployment manages its own gateways
 .services
 
+# SPIRE agent binary — download separately for your platform
+spire-agent-tool
+
 # Python
 __pycache__/
 *.pyc
