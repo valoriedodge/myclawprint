@@ -7,6 +7,12 @@ spire-server-data/
 # Audit logs
 audit-logs/
 
+# Policy — each deployment defines its own permissions
+policy/
+
+# Tracked services — each deployment manages its own gateways
+.services
+
 # Python
 __pycache__/
 *.pyc
