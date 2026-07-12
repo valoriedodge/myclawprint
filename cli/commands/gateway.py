@@ -1,9 +1,10 @@
+import json
 import re
 import subprocess
 from pathlib import Path
 
 import typer
-from typing import List
+from typing import List, Optional
 
 from ..utils import compose, spire
 
@@ -68,6 +69,24 @@ def _service_block(n: int, name: str, label: str) -> str:
 """
 
 
+def _patch_openclaw_config(n: int, name: str) -> None:
+    """Add the gateway's localhost origin to allowedOrigins in openclaw.json if not present."""
+    config_file = _workspace_dir(n, name) / "openclaw.json"
+    if not config_file.exists():
+        return  # not onboarded yet; onboard will create it
+
+    origin = f"http://localhost:{BASE_PORT + n * 100}"
+    config = json.loads(config_file.read_text())
+
+    origins = config.setdefault("gateway", {}).setdefault("controlUi", {}).setdefault("allowedOrigins", [])
+    if origin not in origins:
+        origins.append(origin)
+        config_file.write_text(json.dumps(config, indent=2))
+        typer.echo(f"  [ok] Added '{origin}' to allowedOrigins in openclaw.json")
+    else:
+        typer.echo(f"  [info] '{origin}' already in allowedOrigins")
+
+
 def _tracked_services() -> List[str]:
     if SERVICES_FILE.exists():
         return [s for s in SERVICES_FILE.read_text().split() if s]
@@ -130,6 +149,9 @@ def add(
         except subprocess.CalledProcessError:
             typer.echo(f"  [warn] Onboarding skipped or failed for {name}")
 
+    typer.echo(f"→ Patching openclaw.json ...")
+    _patch_openclaw_config(n, name)
+
     if not no_register:
         parent_id = spire.agent_spiffe_id()
         if not parent_id:
@@ -176,16 +198,18 @@ def install_plugin(
     n: int = typer.Argument(..., help="Gateway number to install the plugin into."),
     name: str = typer.Option(None, "--name", help="Service name (default: openclaw-gateway-N)."),
 ) -> None:
-    """Install the spiffe-security-enforcer plugin into a gateway's extensions directory."""
+    """Install and enable the spiffe-security-enforcer plugin in a gateway."""
     import shutil
     name = name or _default_name(n)
     dest = _workspace_dir(n, name) / "extensions" / PLUGIN_NAME
+    container_plugin_path = f"/home/node/.openclaw/extensions/{PLUGIN_NAME}"
 
     if not PLUGIN_SRC.exists():
         typer.echo(f"[error] Plugin source not found at {PLUGIN_SRC}", err=True)
         raise typer.Exit(1)
 
-    typer.echo(f"→ Installing plugin into {dest} ...")
+    # Copy source and npm install on the host
+    typer.echo(f"→ Copying plugin to {dest} ...")
     if dest.exists():
         shutil.rmtree(dest)
     shutil.copytree(PLUGIN_SRC, dest)
@@ -196,7 +220,35 @@ def install_plugin(
     if result.returncode != 0:
         typer.echo(f"[error] npm install failed:\n{result.stderr}", err=True)
         raise typer.Exit(1)
-    typer.echo(f"  [ok] Plugin installed — restart the gateway to activate it.")
+    typer.echo(f"  [ok] npm install complete")
+
+    # Check if the container is running
+    cid = compose.container_id(name)
+    if not cid:
+        typer.echo(f"  [info] Container '{name}' is not running — plugin will be registered on next start.")
+        typer.echo(f"  Run 'docker compose up -d {name}' then 'myclawprint gateway install-plugin {n}' to enable it.")
+        return
+
+    # Register and enable via openclaw CLI inside the container
+    typer.echo(f"  Registering plugin with openclaw ...")
+    result = compose.exec(name, "openclaw", "plugins", "install",
+                          f"npm-pack:{container_plugin_path}", capture=True)
+    if result.returncode != 0:
+        typer.echo(f"[error] Plugin install failed:\n{result.stdout}{result.stderr}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"  [ok] Plugin registered")
+
+    typer.echo(f"  Enabling plugin ...")
+    result = compose.exec(name, "openclaw", "plugins", "enable", PLUGIN_NAME, capture=True)
+    if result.returncode != 0:
+        typer.echo(f"[error] Plugin enable failed:\n{result.stdout}{result.stderr}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"  [ok] Plugin enabled")
+
+    # Restart to activate
+    typer.echo(f"  Restarting {name} to activate plugin ...")
+    compose.run("restart", name)
+    typer.echo(f"  [ok] {name} restarted — plugin active.")
 
 
 @app.command()

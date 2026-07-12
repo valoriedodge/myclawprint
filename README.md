@@ -225,19 +225,23 @@ The `plugin/` directory contains the `spiffe-security-enforcer` Openclaw plugin.
 
 ### Installing the plugin
 
-The plugin is installed automatically when you run `myclawprint gateway add`. To install or reinstall it manually for a specific gateway:
+The plugin is installed automatically when you run `myclawprint gateway add`. The install process:
+
+1. Copies `plugin/` into the gateway's extensions directory
+2. Runs `npm install`
+3. Registers the plugin: `openclaw plugins install npm-pack:/path/to/plugin`
+4. Enables the plugin: `openclaw plugins enable spiffe-security-enforcer`
+5. Restarts the gateway to activate it
+
+If the gateway container isn't running yet when `gateway add` is called, the plugin files are copied and npm-installed on the host, and a reminder is printed to run `install-plugin` once the container is up.
+
+To install or reinstall the plugin manually:
 
 ```bash
 python3 myclawprint gateway install-plugin <N>
 
 # With a custom service name
 python3 myclawprint gateway install-plugin <N> --name research-agent
-```
-
-Then restart the gateway to activate it:
-
-```bash
-docker compose restart openclaw-gateway-<N>
 ```
 
 To add a gateway without installing the plugin:

@@ -44,6 +44,11 @@ def dirs() -> None:
         Path.home() / ".openclaw_docker_cli" / "workspace",
     ]:
         d.mkdir(parents=True, exist_ok=True)
+
+    # Fluentd runs as UID 999 and needs write access to audit-logs
+    audit_logs = PROJECT_DIR / "audit-logs"
+    subprocess.run(["sudo", "chown", "-R", "999:999", str(audit_logs)], check=True)
+    audit_logs.chmod(0o755)
     typer.echo("  Done.")
 
 
@@ -92,10 +97,18 @@ def certs() -> None:
 
 @app.command()
 def permissions() -> None:
-    """Set directory ownership so SPIRE containers (UID 1000) can write data."""
-    typer.echo("→ Setting permissions on spire-server-data...")
+    """Set directory ownership for SPIRE (UID 1000) and Fluentd (UID 999)."""
+    audit_logs = PROJECT_DIR / "audit-logs"
+    audit_logs.mkdir(parents=True, exist_ok=True)
+
+    typer.echo("→ Setting permissions on spire-server-data (UID 1000)...")
     subprocess.run(["sudo", "chown", "-R", "1000:1000", str(SPIRE_DATA)], check=True)
     SPIRE_DATA.chmod(0o755)
+
+    typer.echo("→ Setting permissions on audit-logs (UID 999 for Fluentd)...")
+    subprocess.run(["sudo", "chown", "-R", "999:999", str(audit_logs)], check=True)
+    audit_logs.chmod(0o755)
+
     typer.echo("  Done.")
 
 
