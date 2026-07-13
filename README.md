@@ -1,4 +1,4 @@
-# Openclaw Identity with Spire
+# Openclaw Identity
 
 Openclaw Identity is a secure AI gateway platform setup that uses:
 
