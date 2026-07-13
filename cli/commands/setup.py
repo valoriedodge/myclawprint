@@ -106,7 +106,7 @@ def certs() -> None:
 
 @app.command()
 def permissions() -> None:
-    """Set directory ownership for SPIRE (UID 1000) and Fluentd (UID 999)."""
+    """Set directory ownership for SPIRE (UID 1000)."""
     import json as _json
     project_name = compose.run("config", "--format", "json", capture=True).stdout
     project = _json.loads(project_name).get("name", PROJECT_DIR.name)
@@ -117,7 +117,6 @@ def permissions() -> None:
         "-v", f"{project}_spire-server-data:/data",
         "busybox", "chown", "-R", "1000:1000", "/data",
     ], check=True)
-
     typer.echo("  Done.")
 
 
