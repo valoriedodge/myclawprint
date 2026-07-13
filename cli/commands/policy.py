@@ -7,12 +7,10 @@ from ..utils import policy as pol
 
 app = typer.Typer(help="Manage OPA tool permissions.")
 
-TRUST_DOMAIN = "example.org"
-
-DEFAULT_PERMISSIONS: Dict[str, List[str]] = {
-    "openclaw-gateway":   ["exec", "read_file"],
-    "openclaw-gateway-2": ["exec", "read_file", "write_file"],
-}
+PROJECT_DIR   = Path(__file__).parent.parent.parent
+SERVICES_FILE = PROJECT_DIR / ".services"
+TRUST_DOMAIN  = "example.org"
+DEFAULT_TOOLS = ["read", "write"]
 
 
 @app.command()
@@ -93,18 +91,27 @@ def list_policy() -> None:
 def seed(
     no_validate: bool = typer.Option(False, "--no-validate"),
 ) -> None:
-    """Write default permissions for the built-in gateways."""
+    """Write default permissions for all tracked gateways."""
+    if not SERVICES_FILE.exists():
+        typer.echo("[error] No tracked services found. Run 'myclawprint setup all' first.", err=True)
+        raise typer.Exit(1)
+
+    services = [s for s in SERVICES_FILE.read_text().split() if s]
+    if not services:
+        typer.echo("[error] No tracked services found. Run 'myclawprint setup all' first.", err=True)
+        raise typer.Exit(1)
+
     content = pol.load()
-    for svc, tools in DEFAULT_PERMISSIONS.items():
+    for svc in services:
         identity = f"spiffe://{TRUST_DOMAIN}/ns/apps/sa/{svc}"
-        for tool in tools:
+        for tool in DEFAULT_TOOLS:
             existing = pol.get_tools(content, identity)
             if existing is None:
                 content = pol.add_identity(content, identity, [tool])
             elif tool not in existing:
                 existing.append(tool)
                 content = pol.set_tools(content, identity, existing)
-        typer.echo(f"  [ok] {identity}: {sorted(tools)}")
+        typer.echo(f"  [ok] {identity}: {sorted(DEFAULT_TOOLS)}")
 
     if not no_validate and not pol.validate():
         typer.echo("[error] OPA validation failed — policy not saved.", err=True)
