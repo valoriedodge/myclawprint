@@ -32,7 +32,9 @@ def all(
         _gateway.add_to_compose(n, name, label)
 
     permissions()
-    start()
+
+    typer.echo("→ Starting infrastructure...")
+    compose.run("up", "-d", "spire-server", "spire-agent", "fluentd-logger", "opa")
     wait()
 
     typer.echo("→ Configuring gateways (plugin, onboard, origins)...")
@@ -41,6 +43,9 @@ def all(
         label = name
         typer.echo(f"\n── {name} ──")
         _gateway.configure_running(n, name, label, skip_onboard=skip_onboard)
+
+    typer.echo("→ Starting gateways...")
+    compose.run("up", "-d")
 
     typer.echo("\n→ Waiting for SPIRE agent attestation...")
     time.sleep(5)
@@ -124,7 +129,7 @@ def permissions() -> None:
 
 @app.command()
 def start() -> None:
-    """Start all containers."""
+    """Start all containers (infrastructure + gateways)."""
     typer.echo("→ Starting containers...")
     compose.run("up", "-d")
 
