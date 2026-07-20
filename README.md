@@ -1,6 +1,6 @@
-# Openclaw Identity
+# OpenClaw Identity
 
-Openclaw Identity is a secure AI gateway platform setup that uses:
+OpenClaw Identity is a secure AI gateway platform setup that uses:
 
 - **SPIRE** for workload identity — each gateway container receives a cryptographic SPIFFE identity (SVID) at runtime
 - **Open Policy Agent (OPA)** for tool authorization — controls which tools each identity is permitted to call
@@ -72,7 +72,7 @@ This runs the full install sequence:
 6. Starts infrastructure (SPIRE server, SPIRE agent, Fluentd, OPA)
 7. Installs the plugin into each gateway workspace and writes its integrity hash to `plugin-hashes/`
 8. Starts gateways — the verifier container checks the hash before each gateway is allowed to start
-9. Runs the interactive Openclaw onboarding process for each gateway
+9. Runs the interactive OpenClaw onboarding process for each gateway
 10. Registers the plugin in each gateway's `openclaw.json` and restarts to activate it
 11. Registers each gateway as a SPIRE workload
 
@@ -102,7 +102,7 @@ This will:
 2. Add `openclaw-gateway-2` (plus its verifier and CLI containers) to `docker-compose.yml`
 3. Install the plugin and write the integrity hash to `plugin-hashes/openclaw-gateway-2.sha256`
 4. Start the gateway — the verifier checks the hash before the container launches
-5. Run the interactive Openclaw onboarding
+5. Run the interactive OpenClaw onboarding
 6. Register the plugin in `openclaw.json` and restart to activate it
 7. Register the gateway as a SPIRE workload with SPIFFE ID `spiffe://example.org/ns/apps/sa/openclaw-gateway-2`
 
@@ -231,7 +231,7 @@ docker compose up -d
 
 ## Plugin: SPIFFE Zero Trust Enforcer
 
-The `plugin/` directory contains the `spiffe-security-enforcer` Openclaw plugin. It runs inside each gateway and:
+The `plugin/` directory contains the `spiffe-security-enforcer` OpenClaw plugin. It runs inside each gateway and:
 
 - **Watches the SPIFFE SVID** — maintains the current workload identity via the SPIRE agent socket; clears identity if the stream ends (fail closed)
 - **Enforces OPA policy** — checks every tool call against `policy/openclaw.rego` before allowing it; blocks the call if OPA is unreachable
