@@ -1,13 +1,17 @@
 # OpenClaw Identity
 
-OpenClaw Identity is a secure AI gateway platform setup that uses:
+AI agents need to be able to prove who they are. Without a strong identity, there's no reliable way to control what tools an agent can call, audit what it did, or detect if its behavior has been tampered with.
 
-- **SPIRE** for workload identity — each gateway container receives a cryptographic SPIFFE identity (SVID) at runtime
-- **Open Policy Agent (OPA)** for tool authorization — controls which tools each identity is permitted to call
-- **Fluentd** for audit logging
-- **Plugin integrity verification** — a hash of the installed plugin is stored on the host and checked before each gateway container starts
+OpenClaw Identity is a reference setup that shows how to give each running [OpenClaw](https://github.com/openclaw/openclaw) agent a cryptographic workload identity using SPIFFE/SPIRE. Once an agent has a verified identity, that identity can be used to enforce tool-level permissions and produce a tamper-evident audit trail — without trusting the agent to self-report who it is.
 
-Infrastructure is managed through the **myclawprint** CLI.
+The setup provides:
+
+- **Workload identity via SPIRE** — each gateway container is automatically issued a short-lived X.509 SVID at runtime, attested by the container's Docker label rather than a static secret
+- **Tool authorization via OPA** — every tool call is checked against a policy that maps SPIFFE IDs to permitted tools; calls are blocked if the agent can't prove its identity or OPA is unreachable
+- **Audit logging via Fluentd** — each tool call produces a signed, hash-chained audit log entry sent over TCP; calls are blocked if the log can't be written
+- **Plugin integrity verification** — a SHA256 hash of the enforcement plugin is stored on the host and checked before each gateway container starts, so a tampered plugin prevents the container from launching
+
+Everything is managed through the **myclawprint** CLI.
 
 ---
 
