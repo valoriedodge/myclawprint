@@ -23,7 +23,7 @@ Everything is managed through the **myclawprint** CLI.
 - `python3` with `typer` installed
 
 ```bash
-pip3 install typer
+pip3 install typer "cryptography"
 ```
 
 ---
@@ -312,6 +312,39 @@ These are already set correctly in `docker-compose.yml`.
 
 ---
 
+## Audit logs
+
+Every tool call — allowed or denied — is written to `audit-logs/` as a hash-chained, signed JSONL file. Each entry includes the SPIFFE ID of the gateway, the tool name and parameters, the OPA decision, and a signature over the payload using the gateway's SVID private key.
+
+The hash chain links each entry to the previous one via `previousHash`, making it detectable if entries are deleted, reordered, or modified after the fact.
+
+**Verify chain integrity:**
+
+```bash
+python3 myclawprint audit verify
+```
+
+**List entries:**
+
+```bash
+# All entries
+python3 myclawprint audit list
+
+# Only denied tool calls
+python3 myclawprint audit list --denied
+
+# Filter by tool or identity
+python3 myclawprint audit list --tool write
+python3 myclawprint audit list --spiffe-id spiffe://example.org/ns/apps/sa/openclaw-gateway-1
+
+# Most recent N entries
+python3 myclawprint audit list --last 20
+```
+
+> **Note:** The hash chain resets (sequence back to 0, previousHash back to the genesis hash) each time a gateway restarts. `audit verify` handles this automatically and treats a sequence=0 entry as the start of a new chain segment.
+
+---
+
 ## Directory structure
 
 ```
@@ -323,7 +356,8 @@ These are already set correctly in `docker-compose.yml`.
 │   │   ├── setup.py              # myclawprint setup ...
 │   │   ├── gateway.py            # myclawprint gateway ...
 │   │   ├── identity.py           # myclawprint identity ...
-│   │   └── policy.py             # myclawprint policy ...
+│   │   ├── policy.py             # myclawprint policy ...
+│   │   └── audit.py              # myclawprint audit ...
 │   └── utils/
 │       ├── compose.py            # docker compose helpers
 │       ├── spire.py              # spire-server helpers

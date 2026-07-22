@@ -2,7 +2,7 @@ from pathlib import Path
 
 import typer
 
-from .commands import setup, gateway, identity, policy
+from .commands import setup, gateway, identity, policy, audit
 from . import utils
 
 app = typer.Typer(
@@ -15,6 +15,7 @@ app.add_typer(setup.app,    name="setup",    help="First-time install and infras
 app.add_typer(gateway.app,  name="gateway",  help="Add and manage openclaw gateway containers.")
 app.add_typer(identity.app, name="identity", help="Register and inspect SPIRE workload identities.")
 app.add_typer(policy.app,   name="policy",   help="Grant and revoke OPA tool permissions.")
+app.add_typer(audit.app,    name="audit",    help="Inspect and verify audit log integrity.")
 
 
 @app.callback()

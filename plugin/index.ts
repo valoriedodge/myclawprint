@@ -6,6 +6,12 @@ import { definePluginEntry } from 'openclaw/plugin-sdk/plugin-entry';
 // --- SPIFFE SVID WATCHER ---
 let currentSpiffeId: string | null = null;
 let signingKey: crypto.KeyObject | null = null;
+let currentCertPem: string | null = null;
+
+function derToPem(der: Uint8Array): string {
+  const b64 = Buffer.from(der).toString('base64').match(/.{1,64}/g)!.join('\n');
+  return `-----BEGIN CERTIFICATE-----\n${b64}\n-----END CERTIFICATE-----`;
+}
 
 async function watchSvid(): Promise<void> {
   const client = createClient();
@@ -20,6 +26,7 @@ async function watchSvid(): Promise<void> {
         format: 'der',
         type: 'pkcs8',
       });
+      currentCertPem = svid.x509Svid?.[0] ? derToPem(svid.x509Svid[0]) : null;
       console.log(`[Audit] SVID loaded: ${currentSpiffeId}`);
     }
   } catch (err) {
@@ -28,6 +35,7 @@ async function watchSvid(): Promise<void> {
     // Clear identity when stream ends — fail closed until re-attested.
     currentSpiffeId = null;
     signingKey = null;
+    currentCertPem = null;
     setTimeout(watchSvid, 5000);
   }
 }
@@ -90,20 +98,23 @@ function connectToSIEM() {
 
 connectToSIEM();
 
-function sendSignedAuditLog(entry: object, key: crypto.KeyObject): void {
+function sendSignedAuditLog(entry: object, key: crypto.KeyObject, certPem: string): void {
   if (!siemConnected || tcpClient.pending || tcpClient.destroyed) {
     throw new Error('SIEM TCP socket is not connected');
   }
 
   const chainedEntry = {
     ...entry,
+    svid_cert: certPem,
     previousHash,
     sequence: chainSequence,
   };
 
   const payload = JSON.stringify(chainedEntry);
   const currentHash = hashPayload(payload);
-  const signature = crypto.sign('sha256', Buffer.from(payload), key).toString('base64');
+  // Sign the hash hex string so verifiers can check against the stored hash
+  // without needing to reconstruct the exact JSON serialization.
+  const signature = crypto.sign('sha256', Buffer.from(currentHash), key).toString('base64');
   const message = Buffer.from(JSON.stringify({ payload: chainedEntry, hash: currentHash, signature }) + '\n');
 
   tcpClient.write(message);
@@ -125,7 +136,7 @@ export default definePluginEntry({
       console.log(`[Audit] Tool call intercepted: ${event.toolName}`);
 
       // Fail closed: no identity.
-      if (!signingKey || !currentSpiffeId) {
+      if (!signingKey || !currentSpiffeId || !currentCertPem) {
         return { block: true, blockReason: 'Audit failure: SPIFFE SVID not yet available.' };
       }
 
@@ -151,7 +162,7 @@ export default definePluginEntry({
           params: event.params,
           opaDecision,
           timestamp: Date.now(),
-        }, signingKey);
+        }, signingKey, currentCertPem);
         console.log(`[Audit] Log sent for tool: ${event.toolName}, allowed: ${opaDecision}`);
       } catch (error) {
         console.error('[Audit] Failed to send audit log:', error);
