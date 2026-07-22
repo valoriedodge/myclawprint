@@ -138,6 +138,7 @@ def permissions() -> None:
     project = os.environ.get("COMPOSE_PROJECT_NAME", PROJECT_DIR.name)
 
     typer.echo("→ Setting permissions on spire-server-data volume (UID 1000)...")
+    subprocess.run(["docker", "volume", "create", f"{project}_spire-server-data"], check=True)
     subprocess.run([
         "docker", "run", "--rm",
         "-v", f"{project}_spire-server-data:/data",
