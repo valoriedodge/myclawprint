@@ -114,7 +114,7 @@ def _verifier_block(n: int, name: str) -> str:
       - {home}:/workspace:ro
       - {HASHES_DIR}:/hashes:ro
     working_dir: /workspace
-    command: sh -c "sha256sum -c /hashes/{name}.sha256 && echo '[ok] Plugin integrity verified' || (echo '[FAIL] Plugin integrity check failed for {name} — plugin may have been tampered with. Run: python3 myclawprint gateway verify-plugin' && exit 1)"
+    command: ["sh", "-c", "sha256sum -c /hashes/{name}.sha256 && echo '[ok] Plugin integrity verified' || (echo '[FAIL] Plugin integrity check failed for {name} - run: python3 myclawprint gateway verify-plugin' && exit 1)"]
     restart: "no"
 """
 

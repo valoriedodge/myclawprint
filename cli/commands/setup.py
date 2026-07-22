@@ -132,9 +132,10 @@ def certs(
 @app.command()
 def permissions() -> None:
     """Set directory ownership for SPIRE (UID 1000)."""
-    import json as _json
-    project_name = compose.run("config", "--format", "json", capture=True).stdout
-    project = _json.loads(project_name).get("name", PROJECT_DIR.name)
+    # Docker Compose uses the directory name as the project name by default.
+    # Prefer COMPOSE_PROJECT_NAME env var if set, then fall back to dir name.
+    import os
+    project = os.environ.get("COMPOSE_PROJECT_NAME", PROJECT_DIR.name)
 
     typer.echo("→ Setting permissions on spire-server-data volume (UID 1000)...")
     subprocess.run([
