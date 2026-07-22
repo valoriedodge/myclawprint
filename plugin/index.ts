@@ -26,7 +26,7 @@ async function watchSvid(): Promise<void> {
         format: 'der',
         type: 'pkcs8',
       });
-      currentCertPem = svid.x509Svid?.[0] ? derToPem(svid.x509Svid[0]) : null;
+      currentCertPem = svid.x509Svid?.length ? derToPem(svid.x509Svid) : null;
       console.log(`[Audit] SVID loaded: ${currentSpiffeId}`);
     }
   } catch (err) {
